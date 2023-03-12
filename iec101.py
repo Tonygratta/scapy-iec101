@@ -163,6 +163,32 @@ ES_ENUM = {
     3: 'Indeterminate (3)',
 }
 
+DOW_ENUM = {
+    0: 'not used',
+    1: 'Monday',
+    2: 'Tuesday',
+    3: 'Wednesday',
+    4: 'Thursday',
+    5: 'Friday',
+    6: 'Saturday',
+    7 :'Sunday',
+}
+
+RCS_ENUM = {
+    0: 'not permitted',
+    1: 'next step LOWER',
+    2: 'next step HIGHER',
+    3: 'not permitted',
+}
+
+COI_ENUM = {
+    0: 'local power switch on',
+    1: 'local manual reset',
+    2: 'remote reset',
+}
+COI_ENUM.update({x: 'reserved (compatible)' for x in range(3,32)})
+COI_ENUM.update({x: 'reserved (private)' for x in range(32,128)})
+
 CAUSE_OF_TX_FLAGS = {
     0: 'Negative',
     1: 'Test'
@@ -256,6 +282,27 @@ class CP24Time2a(Packet):
     def extract_padding(self, s: bytes):
         return b'', s
 
+class CP56Time2a(Packet):
+    name = 'Seven octet binary time'
+    fields_desc = [
+        LEShortField('milliseconds',0x0000),
+        BitField('IV',0b0,1),
+        BitField('GEN',0b0,1),
+        BitField('minute',0b000000,6),
+        BitField('SU',0b0,1),
+        BitField('RES2',0b00,2),
+        BitField('hour',0b00000,5),
+        BitEnumField('DOW', 0x000, 3, DOW_ENUM),
+        BitField('day', 0b00001, 5),
+        BitField('RES3', 0x0, 4),
+        BitField('month', 0x1, 4),
+        BitField('RES4', 0b0, 1),
+        BitField('year', 0b0000000, 7),
+    ]
+
+    def extract_padding(self, s: bytes):
+        return b'', s
+
 class IOVal(Packet):
     name = 'Information object value'
     def extract_padding(self, s: bytes):
@@ -324,6 +371,13 @@ class StatusChange(IOVal):
         BBitField('status', 0x0000, 16),
         BBitField('change', 0x0000, 16),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
+    ]
+
+class VTI(IOVal):
+    name = 'Value with transient Value state indication'
+    fields_desc = [
+        BitField('transient', 0b0, 1),
+        BitField('value', 0b0000000, 7),
     ]
 
 class IO(Packet):
@@ -559,13 +613,113 @@ class IO21(IO):
         )
     ]
 
+class IO30(IO):
+    name = 'Single-point information with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        FlagsField('SIQ', 0x00, 8, SIQ_FLAGS),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO31(IO):
+    name = 'Double-point information with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        PacketField('DIQ', 0x00, DIQ),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO32(IO):
+    name = 'Step position information with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        PacketField('VTI', 0x00, VTI),
+        FlagsField('QDS', 0x00, 8, QDS_FLAGS),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO33(IO):
+    name = 'Bitstring of 32 bits with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        PacketField('BSI', 0x00000000, Bitstring32),
+        FlagsField('QDS', 0x00, 8, QDS_FLAGS),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO34(IO):
+    name = 'Measured value, normalized value with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        NVA('NVA',0x0000),
+        FlagsField('QDS', 0x00, 8, QDS_FLAGS),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO35(IO):
+    name = 'Measured value, scaled value with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        LESignedShortField('SVA', 0x0000),
+        FlagsField('QDS', 0x00, 8, QDS_FLAGS),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO36(IO):
+    name = 'Measured value, short floating point number with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        IEEEFloatField('value', 0.0),
+        FlagsField('QDS', 0x00, 8, QDS_FLAGS),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO37(IO):
+    name = 'Integrated totals with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        PacketField('BCR', 0x0000000000, BCR),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO38(IO):
+    name = 'Event of protection equipment with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        FlagsField('flags', 0b00000, 5, SEP_FLAGS),
+        BitField('reserved', 0b0, 1),
+        BitEnumField('event_state', 0b01, 2, ES_ENUM),
+        LEShortField('elapsed_time', 0x0000),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO39(IO):
+    name = 'Packed start events of protection equipment with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        FlagsField('SPE', 0x00, 8, SPE_FLAGS),
+        FlagsField('QDP', 0x00, 8, QDP_FLAGS),
+        LEShortField('relay_duration', 0x0000),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
+class IO40(IO):
+    name = 'Packed output circuit information of protection equipment with time tag CP56Time2a'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        FlagsField('OCI', 0x00, 8, OCI_FLAGS),
+        FlagsField('QDP', 0x00, 8, QDP_FLAGS),
+        LEShortField('relay_time', 0x0000),
+        PacketField('time', CP56Time2a(), CP56Time2a),
+    ]
+
 class IO45(IO):
     name = 'Single Command'
     fields_desc = [
         XLEShortField('IOA', 0x0000),
-        BitEnumField('SE',0x0, 1, SE_ENUM),
-        BitField('QU', 0x00, 5),
-        BitField('reserved',0x0, 1),
+        BitEnumField('SE',0b0, 1, SE_ENUM),
+        BitField('QU', 0b00000, 5),
+        BitField('reserved',0b0, 1),
         BitEnumField('SCS', 0, 1, SC_ENUM)
     ]
 
@@ -573,9 +727,60 @@ class IO46(IO):
     name = 'Double Command'
     fields_desc = [
         XLEShortField('IOA', 0x0000),
-        BitEnumField('SE',0x0, 1, SE_ENUM),
-        BitField('QU', 0x00, 5),
-        BitEnumField('DCS', 1, 2, DC_ENUM)
+        BitEnumField('SE',0b0, 1, SE_ENUM),
+        BitField('QU', 0b00000, 5),
+        BitEnumField('DCS', 0b01, 2, DC_ENUM)
+    ]
+
+class IO47(IO):
+    name = 'Regulating step command'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        BitEnumField('SE', 0b0, 1, SE_ENUM),
+        BitField('QU', 0b00000, 5),
+        BitEnumField('RCS', 0b00, 2, RCS_ENUM),
+    ]
+
+class IO48(IO):
+    name = 'Set-point command, normalized value'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        NVA('NVA', 0x0000),
+        BitEnumField('SE', 0b0, 1, SE_ENUM),
+        BitField('QL', 0b0000000, 7),
+    ]
+
+class IO49(IO):
+    name = 'Set-point command, scaled value'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        LESignedShortField('SVA', 0x0000),
+        BitEnumField('SE', 0b0, 1, SE_ENUM),
+        BitField('QL', 0b0000000, 7),
+    ]
+
+class IO50(IO):
+    name = 'Set-point command, short floating point number'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        IEEEFloatField('value', 0.0),
+        BitEnumField('SE', 0b0, 1, SE_ENUM),
+        BitField('QL', 0b0000000, 7),
+    ]
+
+class IO51(IO):
+    name = 'Bitstring of 32 bit'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        XBitField('BSI', 0x00, 32),
+    ]
+
+class IO70(IO):
+    name = 'End of initialization'
+    fields_desc = [
+        XLEShortField('IOA', 0x0000),
+        BitField('after_change', 0b0, 1),
+        BitEnumField('COI', 0b0000000, 7, COI_ENUM),
     ]
 
 class ASDU(Packet):
@@ -619,8 +824,25 @@ class ASDU(Packet):
                 (PacketField('IO', IO20(), lambda b: IO20(b, sq=1)), lambda pkt: pkt.VSQ.SQ == 1 and pkt.type == 0x14),
                 (PacketListField('IO', [], lambda b: IO21(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x15),
                 (PacketField('IO', IO21(), lambda b: IO21(b, sq=1)), lambda pkt: pkt.VSQ.SQ == 1 and pkt.type == 0x15),
+                (PacketListField('IO', [], lambda b: IO30(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x1e),
+                (PacketListField('IO', [], lambda b: IO31(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x1f),
+                (PacketListField('IO', [], lambda b: IO32(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x20),
+                (PacketListField('IO', [], lambda b: IO33(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x21),
+                (PacketListField('IO', [], lambda b: IO34(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x22),
+                (PacketListField('IO', [], lambda b: IO35(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x23),
+                (PacketListField('IO', [], lambda b: IO36(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x24),
+                (PacketListField('IO', [], lambda b: IO37(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x25),
+                (PacketListField('IO', [], lambda b: IO38(b, sq=0), count_from=lambda pkt: pkt.VSQ.number), lambda pkt: pkt.VSQ.SQ == 0 and pkt.type == 0x26),
+                (PacketField('IO', IO39(), IO39), lambda pkt: pkt.type == 0x27),
+                (PacketField('IO', IO40(), IO40), lambda pkt: pkt.type == 0x28),
                 (PacketField('IO', IO45(), IO45), lambda pkt: pkt.type == 0x2d),
                 (PacketField('IO', IO46(), IO46), lambda pkt: pkt.type == 0x2e),
+                (PacketField('IO', IO47(), IO47), lambda pkt: pkt.type == 0x2f),
+                (PacketField('IO', IO48(), IO48), lambda pkt: pkt.type == 0x30),
+                (PacketField('IO', IO49(), IO49), lambda pkt: pkt.type == 0x31),
+                (PacketField('IO', IO50(), IO50), lambda pkt: pkt.type == 0x32),
+                (PacketField('IO', IO51(), IO51), lambda pkt: pkt.type == 0x33),
+                (PacketField('IO', IO70(), IO70), lambda pkt: pkt.type == 0x46),
             ],
             XStrField('IO', b'')
         ),
