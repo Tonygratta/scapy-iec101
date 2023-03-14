@@ -189,6 +189,41 @@ COI_ENUM = {
 COI_ENUM.update({x: 'reserved (compatible)' for x in range(3,32)})
 COI_ENUM.update({x: 'reserved (private)' for x in range(32,128)})
 
+QOI_ENUM = {
+    0 : 'not used',
+    20 : 'Station interrogation (global)',
+    21 : 'Interrogation of group 1',
+    22 : 'Interrogation of group 2',
+    23 : 'Interrogation of group 3',
+    24 : 'Interrogation of group 4',
+    25 : 'Interrogation of group 5',
+    26 : 'Interrogation of group 6',
+    27 : 'Interrogation of group 7',
+    28 : 'Interrogation of group 8',
+    29 : 'Interrogation of group 9',
+    30 : 'Interrogation of group 10',
+    31 : 'Interrogation of group 11',
+    32 : 'Interrogation of group 12',
+    33 : 'Interrogation of group 13',
+    34 : 'Interrogation of group 14',
+    35 : 'Interrogation of group 15',
+    36 : 'Interrogation of group 16',
+}
+QOI_ENUM.update({x: 'Reserved (compatible range)' for x in range(1, 20)})
+QOI_ENUM.update({x: 'Reserved (compatible range)' for x in range(37, 64)})
+QOI_ENUM.update({x: 'Reserved (private)' for x in range(64, 256)})
+
+RQT_ENUM = {
+    0 : 'no counter requested (not used)',
+    1 : 'request counter group 1',
+    2 : 'request counter group 2',
+    3 : 'request counter group 3',
+    4 : 'request counter group 4',
+    5 : 'general request counter',
+}
+RQT_ENUM.update({x: 'Reserved (compatible range)' for x in range(6, 32)})
+RQT_ENUM.update({x: 'Reserved (private)' for x in range(32, 64)})
+
 CAUSE_OF_TX_FLAGS = {
     0: 'Negative',
     1: 'Test'
@@ -783,6 +818,13 @@ class IO70(IO):
         BitEnumField('COI', 0b0000000, 7, COI_ENUM),
     ]
 
+class IO100(IO):
+    name = 'Interrogation command'
+    fields_desc = [
+        XByteField('IOA', 0x0000),
+        XByteEnumField('QOI', 0x0000, QOI_ENUM),
+    ]
+
 class ASDU(Packet):
     name = 'ASDU'
     fields_desc = [
@@ -843,6 +885,7 @@ class ASDU(Packet):
                 (PacketField('IO', IO50(), IO50), lambda pkt: pkt.type == 0x32),
                 (PacketField('IO', IO51(), IO51), lambda pkt: pkt.type == 0x33),
                 (PacketField('IO', IO70(), IO70), lambda pkt: pkt.type == 0x46),
+                (PacketField('IO', IO100(), IO100), lambda pkt: pkt.type == 0x64),
             ],
             XStrField('IO', b'')
         ),
