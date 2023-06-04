@@ -2,7 +2,13 @@
 
 from typing import Any, Optional
 from scapy.packet import Packet
-from scapy.fields import Field, XBitField, XByteField, XByteEnumField, XLEShortField, ByteField, BitField, BitEnumField, IEEEFloatField, LEThreeBytesField, LEShortField, LESignedShortField, LESignedIntField, FlagsField, PacketLenField, FieldLenField, StrLenField, PacketField, XStrField, MultipleTypeField, FieldListField, PacketListField
+from scapy.fields import (
+    Field, XBitField, XByteField, XByteEnumField, XLEShortField,
+    ByteField, BitField, BitEnumField, IEEEFloatField, LEThreeBytesField,
+    LEShortField, LESignedShortField, LESignedIntField, LEX3BytesField,
+    FlagsField, PacketLenField, FieldLenField, StrLenField, PacketField,
+    XStrField, MultipleTypeField, FieldListField, PacketListField
+)
 
 FUNCTION_CODES = {
     0x0: 'SEND/CONFIRM - Reset of remote link',
@@ -576,11 +582,12 @@ class AFQ(IOVal):
 
 class IO(Packet):
     name = 'Information object'
-    __slots__ = ['sq', 'number']
+    __slots__ = ['sq', 'number',  'balanced']
 
-    def __init__(self, _pkt: bytes = b"", post_transform: Any = None, _internal: int = 0, _underlayer: Optional[Packet] = None, sq: int = 0, **fields: Any) -> None:
+    def __init__(self, _pkt: bytes = b"", post_transform: Any = None, _internal: int = 0, _underlayer: Optional[Packet] = None, _parent : Optional[Packet] = None, sq: int = 0, **fields: Any) -> None:
         self.sq = sq
         self.number = len(_pkt) - 2 if sq == 1 else 1
+        self.balanced : bool = _parent.balanced if _parent is not None and 'balanced' in _parent.__slots__ else True
         super().__init__(_pkt, post_transform, _internal, _underlayer, **fields)
 
     def extract_padding(self, s: bytes):
@@ -589,7 +596,12 @@ class IO(Packet):
 class IO1(IO):
     name = 'Single-point information without time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (FieldListField('SIQ', [], FlagsField('', 0x00, 8, SIQ_FLAGS), length_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -601,7 +613,12 @@ class IO1(IO):
 class IO2(IO):
     name = 'Single-Point information with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('SIQ', 0x00, 8, SIQ_FLAGS),
         PacketField('time', CP24Time2a(b'\x00\x00\x00'), CP24Time2a),
     ]
@@ -609,7 +626,12 @@ class IO2(IO):
 class IO3(IO):
     name = 'Double-point information without time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('DIQ', [], DIQ, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -621,7 +643,12 @@ class IO3(IO):
 class IO4(IO):
     name = 'Double-point information with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('DIQ', DIQ(b'\x03'), DIQ),
         PacketField('time', CP24Time2a(b'\x00\x00\x00'), CP24Time2a),
     ]
@@ -629,7 +656,12 @@ class IO4(IO):
 class IO5(IO):
     name = 'Step position information'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('information', [], StepPosition, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -641,7 +673,12 @@ class IO5(IO):
 class IO6(IO):
     name = 'Step position information with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         BitField('transient', 0b0, 1),
         BitField('value', 0b0000000, 7),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
@@ -651,7 +688,12 @@ class IO6(IO):
 class IO7(IO):
     name = 'Bitstring of 32 bit'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('Bitstring', [], Bitstring32, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -663,7 +705,12 @@ class IO7(IO):
 class IO8(IO):
     name = 'Bitstring of 32 bit with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         XBitField('BSI', 0x00, 32),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP24Time2a(b'\x00\x00\x00'), CP24Time2a),
@@ -672,7 +719,12 @@ class IO8(IO):
 class IO9(IO):
     name = 'Measured value, normalized value'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('value', [], NormalizedValue, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -684,7 +736,12 @@ class IO9(IO):
 class IO10(IO):
     name = 'Measured value, normalized value with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         NVA('NVA', 0.0),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP24Time2a(), CP24Time2a),
@@ -693,7 +750,12 @@ class IO10(IO):
 class IO11(IO):
     name = 'Measured value, scaled value'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('value', [], ScaledValue, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -705,7 +767,12 @@ class IO11(IO):
 class IO12(IO):
     name = 'Measured value, scaled value with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LESignedShortField('SVA', 0x0000),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP24Time2a(), CP24Time2a),
@@ -714,7 +781,12 @@ class IO12(IO):
 class IO13(IO):
     name = 'Measured value, short floating point number'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('value', [], ShortFloat, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -726,7 +798,12 @@ class IO13(IO):
 class IO14(IO):
     name = 'Measured value, short floating point number with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         IEEEFloatField('value', 0.0),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP24Time2a(), CP24Time2a),
@@ -735,7 +812,12 @@ class IO14(IO):
 class IO15(IO):
     name = 'Integrated totals'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('BCR', [], BCR, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -747,7 +829,12 @@ class IO15(IO):
 class IO16(IO):
     name = 'Integrated totals with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('BCR', BCR(), BCR),
         PacketField('time', CP24Time2a(), CP24Time2a),
     ]
@@ -755,7 +842,12 @@ class IO16(IO):
 class IO17(IO):
     name = 'Event of protection equipment with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('flags', 0b00000, 5, SEP_FLAGS),
         BitField('reserved', 0b0, 1),
         BitEnumField('event_state', 0b01, 2, ES_ENUM),
@@ -766,7 +858,12 @@ class IO17(IO):
 class IO18(IO):
     name = 'Packed start events of protection equipment with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('SPE', 0x00, 8, SPE_FLAGS),
         FlagsField('QDP', 0x00, 8, QDP_FLAGS),
         LEShortField('relay_duration', 0x0000),
@@ -776,7 +873,12 @@ class IO18(IO):
 class IO19(IO):
     name = 'Packed output circuit information of protection equipment with time tag'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('OCI', 0x00, 8, OCI_FLAGS),
         FlagsField('QDP', 0x00, 8, QDP_FLAGS),
         LEShortField('relay_time', 0x0000),
@@ -786,7 +888,12 @@ class IO19(IO):
 class IO20(IO):
     name = 'Packed single-point information with status change detection'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (PacketListField('SCD', [], StatusChange, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -798,7 +905,12 @@ class IO20(IO):
 class IO21(IO):
     name = 'Measured value, normalized value without quality descriptor'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         MultipleTypeField(
             [
                 (FieldListField('NVA', [], NVA, count_from=lambda pkt: pkt.number), lambda pkt: pkt.sq == 1),
@@ -810,7 +922,12 @@ class IO21(IO):
 class IO30(IO):
     name = 'Single-point information with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('SIQ', 0x00, 8, SIQ_FLAGS),
         PacketField('time', CP56Time2a(), CP56Time2a),
     ]
@@ -818,7 +935,12 @@ class IO30(IO):
 class IO31(IO):
     name = 'Double-point information with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('DIQ', 0x00, DIQ),
         PacketField('time', CP56Time2a(), CP56Time2a),
     ]
@@ -826,7 +948,12 @@ class IO31(IO):
 class IO32(IO):
     name = 'Step position information with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('VTI', 0x00, VTI),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP56Time2a(), CP56Time2a),
@@ -835,7 +962,12 @@ class IO32(IO):
 class IO33(IO):
     name = 'Bitstring of 32 bits with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('BSI', 0x00000000, Bitstring32),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP56Time2a(), CP56Time2a),
@@ -844,7 +976,12 @@ class IO33(IO):
 class IO34(IO):
     name = 'Measured value, normalized value with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         NVA('NVA',0x0000),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP56Time2a(), CP56Time2a),
@@ -853,7 +990,12 @@ class IO34(IO):
 class IO35(IO):
     name = 'Measured value, scaled value with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LESignedShortField('SVA', 0x0000),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP56Time2a(), CP56Time2a),
@@ -862,7 +1004,12 @@ class IO35(IO):
 class IO36(IO):
     name = 'Measured value, short floating point number with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         IEEEFloatField('value', 0.0),
         FlagsField('QDS', 0x00, 8, QDS_FLAGS),
         PacketField('time', CP56Time2a(), CP56Time2a),
@@ -871,7 +1018,12 @@ class IO36(IO):
 class IO37(IO):
     name = 'Integrated totals with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('BCR', 0x0000000000, BCR),
         PacketField('time', CP56Time2a(), CP56Time2a),
     ]
@@ -879,7 +1031,12 @@ class IO37(IO):
 class IO38(IO):
     name = 'Event of protection equipment with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('flags', 0b00000, 5, SEP_FLAGS),
         BitField('reserved', 0b0, 1),
         BitEnumField('event_state', 0b01, 2, ES_ENUM),
@@ -890,7 +1047,12 @@ class IO38(IO):
 class IO39(IO):
     name = 'Packed start events of protection equipment with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('SPE', 0x00, 8, SPE_FLAGS),
         FlagsField('QDP', 0x00, 8, QDP_FLAGS),
         LEShortField('relay_duration', 0x0000),
@@ -900,7 +1062,12 @@ class IO39(IO):
 class IO40(IO):
     name = 'Packed output circuit information of protection equipment with time tag CP56Time2a'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         FlagsField('OCI', 0x00, 8, OCI_FLAGS),
         FlagsField('QDP', 0x00, 8, QDP_FLAGS),
         LEShortField('relay_time', 0x0000),
@@ -910,7 +1077,12 @@ class IO40(IO):
 class IO45(IO):
     name = 'Single Command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         BitEnumField('SE',0b0, 1, SE_ENUM),
         BitField('QU', 0b00000, 5),
         BitField('reserved',0b0, 1),
@@ -920,7 +1092,12 @@ class IO45(IO):
 class IO46(IO):
     name = 'Double Command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         BitEnumField('SE',0b0, 1, SE_ENUM),
         BitField('QU', 0b00000, 5),
         BitEnumField('DCS', 0b01, 2, DC_ENUM)
@@ -929,7 +1106,12 @@ class IO46(IO):
 class IO47(IO):
     name = 'Regulating step command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         BitEnumField('SE', 0b0, 1, SE_ENUM),
         BitField('QU', 0b00000, 5),
         BitEnumField('RCS', 0b00, 2, RCS_ENUM),
@@ -938,7 +1120,12 @@ class IO47(IO):
 class IO48(IO):
     name = 'Set-point command, normalized value'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         NVA('NVA', 0x0000),
         BitEnumField('SE', 0b0, 1, SE_ENUM),
         BitField('QL', 0b0000000, 7),
@@ -947,7 +1134,12 @@ class IO48(IO):
 class IO49(IO):
     name = 'Set-point command, scaled value'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LESignedShortField('SVA', 0x0000),
         BitEnumField('SE', 0b0, 1, SE_ENUM),
         BitField('QL', 0b0000000, 7),
@@ -956,7 +1148,12 @@ class IO49(IO):
 class IO50(IO):
     name = 'Set-point command, short floating point number'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         IEEEFloatField('value', 0.0),
         BitEnumField('SE', 0b0, 1, SE_ENUM),
         BitField('QL', 0b0000000, 7),
@@ -965,14 +1162,24 @@ class IO50(IO):
 class IO51(IO):
     name = 'Bitstring of 32 bit'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         XBitField('BSI', 0x00, 32),
     ]
 
 class IO70(IO):
     name = 'End of initialization'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         BitField('after_change', 0b0, 1),
         BitEnumField('COI', 0b0000000, 7, COI_ENUM),
     ]
@@ -980,14 +1187,24 @@ class IO70(IO):
 class IO100(IO):
     name = 'Interrogation command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         XByteEnumField('QOI', 0x0000, QOI_ENUM),
     ]
 
 class IO101(IO):
     name = 'Counter interrogation command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('QCC', QCC(), QCC)
     ]
 
@@ -1000,35 +1217,60 @@ class IO102(IO):
 class IO103(IO):
     name = 'Clock synchronization command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketField('time', CP56Time2a(), CP56Time2a)
     ]
 
 class IO104(IO):
     name = 'Test command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         XLEShortField('FBP', 0x55aa)
     ]
 
 class IO105(IO):
     name = 'Reset process command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         XByteEnumField('QRP', 0x00, QRP_ENUM)
     ]
 
 class IO106(IO):
     name = 'Delay acquisition command'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('delay_ms', 0x0000)
     ]
 
 class IO110(IO):
     name = 'Parameter of measured values, normalized value'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         NVA('NVA', 0.0),
         PacketField('QPM', QPM(), QPM)
     ]
@@ -1036,7 +1278,12 @@ class IO110(IO):
 class IO111(IO):
     name = 'Parameter of measured values, scaled value'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LESignedShortField('SVA', 0x0000),
         PacketField('QPM', QPM(), QPM)
     ]
@@ -1044,7 +1291,12 @@ class IO111(IO):
 class IO112(IO):
     name = 'Parameter of measured values, short floating point number'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         IEEEFloatField('value', 0.0),
         PacketField('QPM', QPM(), QPM)
     ]
@@ -1052,14 +1304,24 @@ class IO112(IO):
 class IO113(IO):
     name = 'Parameter activation'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         XByteEnumField('QPA', 0x00, QPA_ENUM)
     ]
 
 class IO120(IO):
     name = 'File ready'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('NOF', 0x0000),
         LEThreeBytesField('LOF', 0x000000),
         PacketField('FRQ', FRQ(), FRQ)
@@ -1068,7 +1330,12 @@ class IO120(IO):
 class IO121(IO):
     name = 'Section ready'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('NOF', 0x0000),
         ByteField('NOS', 0x00),
         LEThreeBytesField('LOF', 0x000000),
@@ -1078,7 +1345,12 @@ class IO121(IO):
 class IO122(IO):
     name = 'Call directory, select file, call file, call section'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('NOF', 0x0000),
         ByteField('NOS', 0x00),
         PacketField('SCQ', SCQ(), SCQ)
@@ -1087,7 +1359,12 @@ class IO122(IO):
 class IO123(IO):
     name = 'Last section, last segment'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('NOF', 0x0000),
         ByteField('NOS', 0x00),
         XByteEnumField('LSQ', 0x00, LSQ_ENUM),
@@ -1097,7 +1374,12 @@ class IO123(IO):
 class IO124(IO):
     name = 'ACK file, ACK section'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('NOF', 0x0000),
         ByteField('NOS', 0x00),
         PacketField('AFQ', AFQ(), AFQ)
@@ -1106,7 +1388,12 @@ class IO124(IO):
 class IO125(IO):
     name = 'Segment'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         LEShortField('NOF', 0x0000),
         ByteField('NOS', 0x00),
         FieldLenField('LOS', 0x00, length_of='segment', fmt='B'),
@@ -1116,12 +1403,18 @@ class IO125(IO):
 class IO126(IO):
     name = 'Directory'
     fields_desc = [
-        XLEShortField('IOA', 0x0000),
+        MultipleTypeField(
+            [
+                (LEX3BytesField('IOA', 0x000000), lambda pkt: not pkt.balanced)
+            ],
+            XLEShortField('IOA', 0x0000)
+        ),
         PacketListField('entries', [], IOFile, length_from=lambda pkt: pkt.number)
     ]
 
 class ASDU(Packet):
     name = 'ASDU'
+    __slots__ = ['balanced']
     fields_desc = [
         XByteEnumField('type', 0x00, TYPEID_ASDU),
         PacketLenField('VSQ', VSQ(), VSQ, length_from=lambda pkt: 1),
@@ -1202,6 +1495,10 @@ class ASDU(Packet):
             XStrField('IO', b'')
         ),
     ]
+
+    def __init__(self, _pkt: bytes = b"", post_transform: Any = None, _internal: int = 0, _underlayer: Optional[Packet] = None, _parent : Optional[Packet] = None, **fields: Any) -> None:
+        self.balanced : bool = _parent.balanced if _parent is not None and 'balanced' in _parent.__slots__ else True
+        super().__init__(_pkt, post_transform, _internal, _underlayer, **fields)
 
 class FT12Fixed(Packet):
     name = 'FT 1.2 Fixed length'
