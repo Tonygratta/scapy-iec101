@@ -378,6 +378,15 @@ LPCPOP_FLAGS = {1: "LPC", 2: "POP"}
 SOF_FLAGS = {1: "LFD", 2: "FOR", 3: "FA"}
 
 
+class LEIEEEFloatField(Field):
+    """
+    little endian IEEE float field
+    """
+
+    def __init__(self, name, default):
+        Field.__init__(self, name, default, "<f")
+
+
 class NVA(Field):
     def __init__(self, name: str, default: Any, fmt: str = "<e") -> None:
         super().__init__(name, default, fmt)
@@ -496,7 +505,7 @@ class ScaledValue(IOVal):
 class ShortFloat(IOVal):
     name = "Short floating point number"
     fields_desc = [
-        IEEEFloatField("value", 0.0),
+        LEIEEEFloatField("value", 0.0),
         FlagsField("QDS", 0x00, 8, QDS_FLAGS),
     ]
 
@@ -837,7 +846,7 @@ class IO14(IO):
             [(LEX3BytesField("IOA", 0x000000), lambda pkt: not pkt.balanced)],
             XLEShortField("IOA", 0x0000),
         ),
-        IEEEFloatField("value", 0.0),
+        LEIEEEFloatField("value", 0.0),
         FlagsField("QDS", 0x00, 8, QDS_FLAGS),
         PacketField("time", CP24Time2a(), CP24Time2a),
     ]
@@ -1040,7 +1049,7 @@ class IO36(IO):
             [(LEX3BytesField("IOA", 0x000000), lambda pkt: not pkt.balanced)],
             XLEShortField("IOA", 0x0000),
         ),
-        IEEEFloatField("value", 0.0),
+        LEIEEEFloatField("value", 0.0),
         FlagsField("QDS", 0x00, 8, QDS_FLAGS),
         PacketField("time", CP56Time2a(), CP56Time2a),
     ]
@@ -1174,7 +1183,7 @@ class IO50(IO):
             [(LEX3BytesField("IOA", 0x000000), lambda pkt: not pkt.balanced)],
             XLEShortField("IOA", 0x0000),
         ),
-        IEEEFloatField("value", 0.0),
+        LEIEEEFloatField("value", 0.0),
         BitEnumField("SE", 0b0, 1, SE_ENUM),
         BitField("QL", 0b0000000, 7),
     ]
@@ -1305,7 +1314,7 @@ class IO112(IO):
             [(LEX3BytesField("IOA", 0x000000), lambda pkt: not pkt.balanced)],
             XLEShortField("IOA", 0x0000),
         ),
-        IEEEFloatField("value", 0.0),
+        LEIEEEFloatField("value", 0.0),
         PacketField("QPM", QPM(), QPM),
     ]
 
