@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from typing import Any, Optional
-from scapy.packet import Packet
-from scapy.fields import (
+from scapy.packet import Packet  # type: ignore
+from scapy.fields import (  # type: ignore
     Field,
     XBitField,
     XByteField,
@@ -319,63 +319,63 @@ SOF_ENUM = {0: "default"}
 SOF_ENUM.update({x: "Reserved (compatible range)" for x in range(1, 16)})
 SOF_ENUM.update({x: "Reserved (compatible range)" for x in range(16, 32)})
 
-CAUSE_OF_TX_FLAGS = {0: "Negative", 1: "Test"}
+CAUSE_OF_TX_FLAGS = {1: "Negative", 2: "Test"}
 
-CONTROL_FLAGS = {0: "FCV", 1: "FCB", 2: "PRM", 3: "RES"}
+CONTROL_FLAGS = {1: "FCV", 2: "FCB", 3: "PRM", 4: "RES"}
 
-SIQ_FLAGS = {0: "SPI", 4: "BL", 5: "SB", 6: "NT", 7: "IV"}
+SIQ_FLAGS = {1: "SPI", 5: "BL", 6: "SB", 7: "NT", 8: "IV"}
 
-DIQ_FLAGS = {2: "BL", 3: "SB", 4: "NT", 5: "IV"}
+DIQ_FLAGS = {3: "BL", 4: "SB", 5: "NT", 6: "IV"}
 
 QDS_FLAGS = {
-    0: "OV",
-    4: "BL",
-    5: "SB",
-    6: "NT",
-    7: "IV",
+    1: "OV",
+    5: "BL",
+    6: "SB",
+    7: "NT",
+    8: "IV",
 }
 
 BCR_FLAGS = {
-    0: "CY",
-    1: "CA",
-    2: "IV",
+    1: "CY",
+    2: "CA",
+    3: "IV",
 }
 
 SEP_FLAGS = {
-    0: "EI",
-    1: "BL",
-    2: "SB",
-    3: "NT",
-    4: "IV",
+    1: "EI",
+    2: "BL",
+    3: "SB",
+    4: "NT",
+    5: "IV",
 }
 
 SPE_FLAGS = {
-    0: "GS",
-    1: "SL1",
-    2: "SL2",
-    3: "SL3",
-    4: "SIE",
-    5: "SRD",
+    1: "GS",
+    2: "SL1",
+    3: "SL2",
+    4: "SL3",
+    5: "SIE",
+    6: "SRD",
 }
 
 QDP_FLAGS = {
-    3: "EI",
-    4: "BL",
-    5: "SB",
-    6: "NT",
-    7: "IV",
+    4: "EI",
+    5: "BL",
+    6: "SB",
+    7: "NT",
+    8: "IV",
 }
 
 OCI_FLAGS = {
-    0: "GC",
-    1: "CL1",
-    2: "CL2",
-    3: "CL3",
+    1: "GC",
+    2: "CL1",
+    3: "CL2",
+    4: "CL3",
 }
 
-LPCPOP_FLAGS = {0: "LPC", 1: "POP"}
+LPCPOP_FLAGS = {1: "LPC", 2: "POP"}
 
-SOF_FLAGS = {0: "LFD", 1: "FOR", 2: "FA"}
+SOF_FLAGS = {1: "LFD", 2: "FOR", 3: "FA"}
 
 
 class NVA(Field):
