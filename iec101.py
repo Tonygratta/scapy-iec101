@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Authors and sources:
+# https://github.com/Tonygratta/scapy-iec101
+ 
 from typing import Any, Optional
 from scapy.packet import Packet  # type: ignore
 from scapy.fields import (  # type: ignore

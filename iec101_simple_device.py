@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Authors and sources:
+# https://github.com/Tonygratta/scapy-iec101
+
 import serial
 from time import time, time_ns
 from iec101 import FT12Frame
